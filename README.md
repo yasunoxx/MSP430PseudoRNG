@@ -3,7 +3,10 @@ MSP430PseudoRNG
 
 TI MSP430 PseudoRNG(Random Number Generator) for MSP430-LaunchPad, or MSP430G2553.
 
-This is early release. take care for use.
+Add new GCC(Mitto Systems Limited - msp430-gcc 9.2.0.50) support.
+https://www.ti.com/tool/MSP430-GCC-OPENSOURCE
+
+If you use GCC 4.6.3, you must edit Makefile.
 
 for usage:
 
@@ -13,4 +16,3 @@ for usage:
       > exit
 
 1bit Pseudorandom Number Output is P1.0 .
-
