@@ -10,7 +10,7 @@
 ;  LISTING 1 - 12C508 ASSEMBLY CODE FOR PSEUDORANDOM-NOISE GENERATOR
 ; "Single IC Forms pseudorandom-noise source," EDN, March 21, 2002, pg 98
 ; *********************************************************************************
-; 
+;
 ;    Pseudorandom Noise Generator
 ;    12/12/01 Stephen J. Ploss
 ;
@@ -58,7 +58,11 @@ loop
     END
 */
 
+#ifdef GCC_VERSION_463
 #include <legacymsp430.h>
+#else
+#include <msp430g2553.h>
+#endif
 #include "prng.h"
 #include "io.h"
 
@@ -89,7 +93,7 @@ const unsigned char WaveBuf[ 12 ] = { 0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 
 void prng6bit( void )
 {
 	unsigned char buf;
-	
+
 	Prng_OutBuf <<= 1;
 	Prng_OutBuf |= prng();
 
