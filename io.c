@@ -74,7 +74,9 @@ unsigned short SampleAndConversionAdcTemp( void )
 void InitializeLeds( void )
 {
   LED_DIR |= LED1 + LED2;
-  LED_OUT &= ~( LED1 + LED2 );
+//  LED_OUT &= ~( LED1 + LED2 );
+  LED_OUT &= ~LED1;
+  LED_OUT &= ~LED2;
 }
 
 void InitializeButton( void )   // Configure Push Button

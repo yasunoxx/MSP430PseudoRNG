@@ -102,6 +102,7 @@ void prng6bit( void )
 		buf = PRNG_OUT;
 		PRNG_OUT = buf & 0x0C0;
 		PRNG_OUT |= ( Prng_OutBuf & 0x3F );
+		Prng_LoopCount = 0;
 	} else {
 		Prng_LoopCount++;
 	}
@@ -113,7 +114,7 @@ void prng1bit( void )
 	unsigned char prn_b = 0, prn_c = 0;
 	unsigned short tempreg;
 
-	if( ADC10CTL1 & ( 0x0FFFF - ADC10BUSY ) ) != 0 )
+	if( ( ADC10CTL1 & ( 0x0FFFF - ADC10BUSY ) ) != 0 )
 	{
 		tempreg = SampleAndConversionAdcTemp();
 		tempreg >>= 8;
@@ -132,14 +133,17 @@ void prng1bit( void )
 		prn_c = 1;
 	}
 
-	if( 0 == md_prng( prng(), prn_b, prn_c );
+	if( 0 == md_prng( prng(), prn_b, prn_c ) )
 #else
-	if( 0 == prng() )
+	u_char val;
+
+	val = prng();
+	if( val != 0 )
 #endif
 	{
-		LED_OUT &= ~LED1;
-	} else {
 		LED_OUT |= LED1;
+	} else {
+		LED_OUT &= ~LED1;
 	}
 }
 
