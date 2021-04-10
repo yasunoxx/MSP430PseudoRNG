@@ -121,7 +121,6 @@ int main( void )
 	while( 1 )
 	{
 		prng1bit();
-//		prng6bit();
 	}
 }
 
