@@ -66,12 +66,18 @@ loop
 #include "prng.h"
 #include "io.h"
 
+#define Topbyte 0
 #define Hibyte 1
 #define Midbyte 2
 #define Lobyte 3
 
-union uni_ShiftReg {
-    u_int i;
+/*
+volatile static union uni_ShiftReg {
+    u_int i:32;
+    struct str_s {
+        u_short sh;
+        u_short sl;
+    } s;
     struct str_b {
         u_short pad:7;
         u_char carry:1;
@@ -85,82 +91,94 @@ union uni_ShiftReg {
     } b2;
     u_char c[ 4 ];
 } ShiftReg;
-
-u_char Prng_LoopCount;
-u_char Prng_OutBuf;
-const unsigned char WaveBuf[ 12 ] = { 0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
-
-void prng6bit( void )
-{
-	unsigned char buf;
-
-	Prng_OutBuf <<= 1;
-	Prng_OutBuf |= prng();
-
-	if( Prng_LoopCount >= 5 )
-	{
-		buf = PRNG_OUT;
-		PRNG_OUT = buf & 0x0C0;
-		PRNG_OUT |= ( Prng_OutBuf & 0x3F );
-		Prng_LoopCount = 0;
-	} else {
-		Prng_LoopCount++;
-	}
-}
+*/
+volatile static struct {
+    u_char c[ 4 ];
+} ShiftReg;
 
 void prng1bit( void )
 {
 #ifdef MAJORITY_DECISION
-	unsigned char prn_b = 0, prn_c = 0;
-	unsigned short tempreg;
+    unsigned char prn_b = 0, prn_c = 0;
+	  unsigned short tempreg;
 
-	if( ( ADC10CTL1 & ( 0x0FFFF - ADC10BUSY ) ) != 0 )
-	{
-		tempreg = SampleAndConversionAdcTemp();
-		tempreg >>= 8;
-		if( ( tempreg & 0x0001 ) == 0 )
-		{
-			prn_b = 0;
-		} else {
-			prn_b = 1;
-		}
-	}
+	  if( ( ADC10CTL1 & ( 0x0FFFF - ADC10BUSY ) ) != 0 )
+	  {
+		    tempreg = SampleAndConversionAdcTemp();
+		    tempreg >>= 8;
+		    if( ( tempreg & 0x0001 ) == 0 )
+		    {
+		        prn_b = 0;
+		    } else {
+            prn_b = 1;
+        }
+    }
 
-	if( ( BUTTON_IN & BUTTON ) == 0 )
-	{
-		prn_c = 0;
-	} else {
-		prn_c = 1;
-	}
+    if( ( BUTTON_IN & BUTTON ) == 0 )
+    {
+        prn_c = 0;
+    } else {
+        prn_c = 1;
+    }
 
-	if( 0 == md_prng( prng(), prn_b, prn_c ) )
+    if( 0 != md_prng( prng(), prn_b, prn_c ) )
 #else
-	u_char val;
+    u_char val;
 
-	val = prng();
-	if( val != 0 )
+    val = prng();
+    if( val != 0 )
 #endif
-	{
-		LED_OUT |= LED1;
-	} else {
-		LED_OUT &= ~LED1;
-	}
+    {
+        LED_OUT |= LED1;
+    } else {
+        LED_OUT &= ~LED1;
+    }
 }
 
 u_char prng( void )
 {
-    u_char carry;
+    u_char carry, carry2;
 
-    carry = ShiftReg.b.carry;
-    ShiftReg.i <<= 1;
-    ShiftReg.b2.carry = carry;
+    // Lobyte
+    carry = ShiftReg.c[ Lobyte ] & 0x80;  // get Lobyte Carry
+    if( carry != 0 )
+    {
+        carry = 0x01;
+    } else {
+        carry = 0;
+    }
+    ShiftReg.c[ Lobyte ] <<= 1;
+    ShiftReg.c[ Lobyte ] |= ShiftReg.c[ Topbyte ];// Store previous Hibyte Carry to Lobyte
 
-    if( carry == 1 )
+    // Midbyte
+    carry2 = ShiftReg.c[ Midbyte ] & 0x80; // get Midbyte Carry
+    if( carry2 != 0 )
+    {
+        carry2 = 0x01;
+    } else {
+        carry2 = 0;
+    }
+    ShiftReg.c[ Midbyte ] <<= 1;
+    ShiftReg.c[ Midbyte ] |= carry;       // Store Lobyte Carry to Midbyte
+
+    // Hibyte
+    carry = ShiftReg.c[ Hibyte ] & 0x80;  // get Hibyte Carry
+    if( carry != 0 )
+    {
+        carry = 0x01;
+    } else {
+        carry = 0;
+    }
+    ShiftReg.c[ Hibyte ] <<= 1;
+    ShiftReg.c[ Hibyte ] |= carry2;        // Store Midbyte Carry to Hibyte
+    ShiftReg.c[ Topbyte ] = carry;
+
+    if( carry != 0 )
     {
         ShiftReg.c[ Lobyte ] ^= 0x1A;
     }
 
-    return ShiftReg.b2.retbit;
+    return ( ShiftReg.c[ Hibyte ] & 0x01 );
 }
 
 /* md_prng() -- majority decision */
@@ -173,7 +191,8 @@ u_char prn_a, prn_b, prn_c;
         {
             return 1;
         }
-    } else if( prn_b == 1 && prn_c == 1 )
+    }
+    else if( prn_b == 1 && prn_c == 1 )
     {
         return 1;
     }
@@ -182,7 +201,10 @@ u_char prn_a, prn_b, prn_c;
 
 void init_prng( void )
 {
-	ShiftReg.i = 0x00FFFFFF;
-	Prng_LoopCount = 0;
-	PRNG_DIR = 0x3F;
+    ShiftReg.c[ Topbyte ] = 0x00;
+    ShiftReg.c[ Hibyte ] = 0x0FF;
+    ShiftReg.c[ Midbyte ] = 0x0FF;
+    ShiftReg.c[ Lobyte ] = 0x0FF;
+//    LED_OUT |= LED1;  // Runup
+//    while( 1 );
 }
