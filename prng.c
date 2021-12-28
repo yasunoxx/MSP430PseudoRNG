@@ -63,6 +63,7 @@ loop
 #else
 #include <msp430g2553.h>
 #endif
+#include <stdint.h>
 #include "prng.h"
 #include "io.h"
 
@@ -73,34 +74,34 @@ loop
 
 /*
 volatile static union uni_ShiftReg {
-    u_int i:32;
+    uint32_t i:32;
     struct str_s {
-        u_short sh;
-        u_short sl;
+        uint16_t sh;
+        uint16_t sl;
     } s;
     struct str_b {
-        u_short pad:7;
-        u_char carry:1;
-        u_int reg:24;
+        uint16_t pad:7;
+        uint8_t carry:1;
+        uint32_t reg:24;
     } b;
     struct str_b2 {
-        u_int pad:15;
-        u_char retbit:1;
-        u_int pad2:15;
-        u_char carry:1;
+        uint32_t pad:15;
+        uint8_t retbit:1;
+        uint32_t pad2:15;
+        uint8_t carry:1;
     } b2;
-    u_char c[ 4 ];
+    uint8_t c[ 4 ];
 } ShiftReg;
 */
 volatile static struct {
-    u_char c[ 4 ];
+    uint8_t c[ 4 ];
 } ShiftReg;
 
 void prng1bit( void )
 {
 #ifdef MAJORITY_DECISION
-    unsigned char prn_b = 0, prn_c = 0;
-	  unsigned short tempreg;
+    uint8_t prn_b = 0, prn_c = 0;
+	  uint16_t tempreg;
 
 	  if( ( ADC10CTL1 & ( 0x0FFFF - ADC10BUSY ) ) != 0 )
 	  {
@@ -123,7 +124,7 @@ void prng1bit( void )
 
     if( 0 != md_prng( prng(), prn_b, prn_c ) )
 #else
-    u_char val;
+    uint8_t val;
 
     val = prng();
     if( val != 0 )
@@ -135,9 +136,9 @@ void prng1bit( void )
     }
 }
 
-u_char prng( void )
+uint8_t prng( void )
 {
-    u_char carry, carry2;
+    uint8_t carry, carry2;
 
     // Lobyte
     carry = ShiftReg.c[ Lobyte ] & 0x80;  // get Lobyte Carry
@@ -182,8 +183,8 @@ u_char prng( void )
 }
 
 /* md_prng() -- majority decision */
-u_char md_prng( prn_a, prn_b, prn_c )
-u_char prn_a, prn_b, prn_c;
+uint8_t md_prng( prn_a, prn_b, prn_c )
+uint8_t prn_a, prn_b, prn_c;
 {
     if( prn_a == 1 )
     {
